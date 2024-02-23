@@ -68,6 +68,7 @@ quests = {
 async def command_start_handler(message: types.Message):
     db = SessionLocal()
     user = db.query(models.User).filter(models.User.user_tg_id == message.from_user.id).first()
+    # Check if user exists
     if not user:
         try:
             tg_user_id = message.from_user.id
@@ -92,10 +93,12 @@ async def show_quests(message: types.Message):
 
 
 def check_quest_status(user_id, quest_name):
-    db = SessionLocal()
-    quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name).first()
+    quest = get_quest_by_name(user_id, quest_name)
     if quest:
-        return quest.finished
+        step, quest_name = quest.step, quest.quest_name
+        riddles = quests.get(quest_name)
+        if step == len(riddles):
+            return True
     return False
 
 
@@ -103,10 +106,9 @@ def check_quest_status(user_id, quest_name):
 async def process_quest(callback_query: types.CallbackQuery):
     quest_name = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
-    if check_quest_status(user_id, quest_name):
-        await bot.answer_callback_query(callback_query.id)
-        return await bot.send_message(user_id, "Квест уже пройдён")
     await bot.answer_callback_query(callback_query.id)
+    if check_quest_status(user_id, quest_name):
+        return await bot.send_message(user_id, "Квест уже пройдён")
     inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Назад ❌', callback_data=f"start_back_nothing"),
@@ -149,6 +151,7 @@ async def send_quest_step(user_id):
                 await bot.send_photo(user_id, riddle['image'])
             await bot.send_message(user_id, riddle['description'])
         else:
+            await update_quest(user_id, {"active": False})
             if quests_description.get(quest_name).get('offer', None):
                 await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
             else:
@@ -177,14 +180,25 @@ async def command_help_handler(message: types.Message):
     await bot.send_message(message.from_user.id, text=HELP_COMMAND)
 
 
+def get_quest_by_name(user_id, quest_name):
+    db = SessionLocal()
+    try:
+        quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name).first()
+        if quest:
+            return quest
+        return None
+    finally:
+        db.close()
+
 def get_quest(user_id):
     db = SessionLocal()
     try:
         quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True).first()
-        step, quest_name = quest.step, quest.quest_name
+        if quest:
+            return quest
+        return None
     finally:
         db.close()
-    return step, quest_name
 
 
 async def update_quest(user_id, data):
@@ -192,8 +206,6 @@ async def update_quest(user_id, data):
     try:
         quest_query = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True)
         quest_query.update(data, synchronize_session=False)
-        if data.get('finished', False):
-            quest_query.update({'active': False}, synchronize_session=False)
         db.commit()
     finally:
         db.close()
@@ -203,8 +215,9 @@ async def update_quest(user_id, data):
 async def check_answer(message: types.Message):
     # Checking the answer
     user_id = message.from_user.id
-    step, quest_name = get_quest(user_id)
-    if quest_name and message.text:
+    quest = get_quest(user_id)
+    if quest:
+        step, quest_name = quest.step, quest.quest_name
         riddles = quests.get(quest_name)
         if step < len(riddles):
             riddle = riddles[step]
@@ -214,13 +227,12 @@ async def check_answer(message: types.Message):
                 await update_quest(user_id, {"step": step + 1})
                 await send_quest_step(user_id)
             else:
-                await update_quest(user_id, {"finished": True})
                 await bot.send_message(user_id, riddle['exception'].format(answer=riddle['answer']))
         else:
+            await update_quest(user_id, {"active": False})
             await bot.send_message(user_id, "Вы уже прошли все загадки этого квеста.")
     else:
         await bot.send_message(user_id, "Не удалось найти информацию о вашем текущем квесте.")
-
 
 
 @dp.message(F.text == '/give')

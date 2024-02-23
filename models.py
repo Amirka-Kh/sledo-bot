@@ -20,7 +20,7 @@ class User(Base):
 
 class Feedback(Base):
     __tablename__ = 'feedback'
-    feedback_id = Column(Integer, primary_key=True)
+    feedback_id = Column(Integer, primary_key=True, nullable=False)
     feedback_name = Column(String, nullable=False)
     feedback = Column(String, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
@@ -30,10 +30,10 @@ class Feedback(Base):
 
 class Quest(Base):
     __tablename__ = 'quest'
-    quest_id = Column(Integer, primary_key=True)
+    quest_id = Column(Integer, primary_key=True, nullable=False)
     quest_name = Column(String, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
-    player_id = Column(Integer, ForeignKey("users.user_tg_id", ondelete="CASCADE"), nullable=False)
     step = Column(Integer, nullable=False, default=0)
-    finished = Column(Boolean, nullable=False, default=False)
+    player_id = Column(Integer, ForeignKey("users.user_tg_id", ondelete="CASCADE"), nullable=False)
     active = Column(Boolean, nullable=False, default=False)
+    finished = Column(Boolean, nullable=False, default=False)
