@@ -5,12 +5,12 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 kb_client = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Квесты"),
-            KeyboardButton(text="Feedback"),
+            KeyboardButton(text="🧩Квесты🧩"),
+            KeyboardButton(text="👍Feedback👎"),
         ],
         [
-            KeyboardButton(text="Помощь"),
-            KeyboardButton(text="Результаты"),
+            KeyboardButton(text="🙏Помощь🙏"),
+            KeyboardButton(text="🏅Результаты🏅"),
         ],
     ],
     resize_keyboard=True,
