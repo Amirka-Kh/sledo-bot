@@ -37,3 +37,7 @@ class Quest(Base):
     player_id = Column(Integer, ForeignKey("users.user_tg_id", ondelete="CASCADE"), nullable=False)
     active = Column(Boolean, nullable=False, default=False)
     finished = Column(Boolean, nullable=False, default=False)
+
+    __table_args__ = (
+        UniqueConstraint('quest_name', 'player_id', name='_quest_player_unique'),
+    )

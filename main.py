@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
+#TODO import dict with messages
 from message import *
 from config import settings
 from kbs import *
@@ -41,18 +42,17 @@ async def command_start_handler(message: types.Message):
 async def show_quests(message: types.Message):
     inline_keyboard = []
     for quest in quests:
-        inline_keyboard.append(InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}"))
-    quest_options = InlineKeyboardMarkup(inline_keyboard=[inline_keyboard])
+        if is_quest_finished(message.from_user.id, quest):
+            continue
+        inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
+    quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
     await message.answer("У нас есть следующие активные квесты 🗺:", reply_markup=quest_options)
 
 
-def check_quest_status(user_id, quest_name):
+def is_quest_finished(user_id, quest_name):
     quest = get_quest_by_name(user_id, quest_name)
     if quest:
-        step, quest_name = quest.step, quest.quest_name
-        riddles = quests.get(quest_name)
-        if step == len(riddles):
-            return True
+        return quest.finished
     return False
 
 
@@ -61,15 +61,13 @@ async def process_quest(callback_query: types.CallbackQuery):
     quest_name = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
     await bot.answer_callback_query(callback_query.id)
-    if check_quest_status(user_id, quest_name):
-        #TODO say to leave feedback or try another quest
-        return await bot.send_message(user_id, "Квест уже пройдён")
     inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text='Назад ❌', callback_data=f"start_back_nothing"),
             InlineKeyboardButton(text='Начать ✅', callback_data="start_start_{}".format(quest_name)),
         ]
     ])
+    #TODO add image
     await bot.send_message(user_id, quests_description.get(quest_name).get('description'), reply_markup=inline_keyboard)
 
 
@@ -79,13 +77,7 @@ async def process_start(callback_query: types.CallbackQuery):
     quest_name = callback_query.data.split('_')[2]
     user_id = callback_query.from_user.id
     if option == 'start':
-        db = SessionLocal()
-        try:
-            new_quest = models.Quest(player_id=user_id, quest_name=quest_name, active=True)
-            db.add(new_quest)
-            db.commit()
-        finally:
-            db.close()
+        await add_quest(user_id, quest_name)
         await bot.answer_callback_query(callback_query.id)
         await send_quest_step(user_id)
     elif option == 'back':
@@ -94,53 +86,61 @@ async def process_start(callback_query: types.CallbackQuery):
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
-async def send_quest_step(user_id):
+async def add_quest(user_id, quest_name):
     db = SessionLocal()
     try:
-        quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True).first()
-        step, quest_name = quest.step, quest.quest_name
-        riddles = quests.get(quest_name)
-        if step < len(riddles):
-            riddle = riddles[step]
-            if riddle['image']:
-                await bot.send_photo(user_id, riddle['image'])
-            answer_keyboard = []
-            for answer in riddle['options']:
-                answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=f"answer_{answer}")])
-            answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
-            await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
-        else:
-            await update_quest(user_id, {"active": False})
-            if quests_description.get(quest_name).get('offer', None):
-                await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
-            else:
-                await bot.send_message(user_id, "Поздравляем, вы прошли квест!")
+        # Inactivate all quests
+        #TODO check if all quests are inactivated
+        quest_query = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True)
+        quest_query.update({"active": False}, synchronize_session=False)
+        db.commit()
+        # Add new quest
+        new_quest = models.Quest(player_id=user_id, quest_name=quest_name, active=True)
+        db.add(new_quest)
+        db.commit()
     finally:
         db.close()
 
 
+async def send_quest_step(user_id):
+    quest = get_quest(user_id)
+    step, quest_name = quest.step, quest.quest_name
+    riddles = quests.get(quest_name)
+    if step < len(riddles):
+        riddle = riddles[step]
+        answer_keyboard = []
+        for answer in riddle['options']:
+            answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=f"answer_{answer}")])
+        answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
+        if riddle['image']:
+            return await bot.send_photo(user_id, riddle['image'],
+                                        caption=riddle['description'], reply_markup=answer_options)
+        await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
+    else:
+        await update_quest(user_id, {"active": False, "finished": True})
+        if quests_description.get(quest_name).get('offer', None):
+            return await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
+        await bot.send_message(user_id, "Поздравляем, вы прошли квест!")
+
+
 @dp.callback_query(lambda query: query.data.startswith('answer'))
-async def process_start(callback_query: types.CallbackQuery):
+async def process_answer(callback_query: types.CallbackQuery):
     option = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
     if quest:
-        step, quest_name = quest.step, quest.quest_name
-        riddles = quests.get(quest_name)
-        if step < len(riddles):
-            riddle = riddles[step]
-            # TODO compare leivenstain distance
-            if option.lower() == riddle['answer']:
-                await bot.send_message(user_id, "Проверяем...")
-                await update_quest(user_id, {"step": step + 1})
-                await send_quest_step(user_id)
-            else:
-                await bot.send_message(user_id, riddle['exception'].format(answer=option))
+        riddles = quests.get(quest.quest_name)
+        step = quest.step
+        riddle = riddles[step]
+        # TODO compare levenshtein distance
+        if option.lower() == riddle['answer']:
+            await bot.send_message(user_id, "Проверяем...")
+            await update_quest(user_id, {"step": step + 1})
+            await send_quest_step(user_id)
         else:
-            await update_quest(user_id, {"active": False})
-            await bot.send_message(user_id, "Вы уже прошли все загадки этого квеста.")
+            await bot.send_message(user_id, riddle['exception'].format(answer=option))
     else:
-        await bot.send_message(user_id, "Не удалось найти информацию о вашем текущем квесте.")
+        await bot.send_message(user_id, "Похоже у нас проблемы, мы потеряли все ваши данные. Квест придется начать заново.")
 
 
 @dp.message(F.text == '/help')
@@ -163,23 +163,20 @@ async def show_results(message: types.Message):
     await message.answer("Спасибо за feedback 🙏")
 
 
-def get_quest_by_name(user_id, quest_name):
-    db = SessionLocal()
-    try:
-        quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name).first()
-        if quest:
-            return quest
-        return None
-    finally:
-        db.close()
-
 def get_quest(user_id):
     db = SessionLocal()
     try:
         quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True).first()
-        if quest:
-            return quest
-        return None
+        return quest
+    finally:
+        db.close()
+
+
+def get_quest_by_name(user_id, quest_name):
+    db = SessionLocal()
+    try:
+        quest = db .query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name).first()
+        return quest
     finally:
         db.close()
 
@@ -200,22 +197,18 @@ async def check_answer(message: types.Message):
     user_id = message.from_user.id
     quest = get_quest(user_id)
     if quest:
-        step, quest_name = quest.step, quest.quest_name
-        riddles = quests.get(quest_name)
-        if step < len(riddles):
-            riddle = riddles[step]
-            # TODO compare leivenstain distance
-            if message.text.lower() == riddle['answer']:
-                await bot.send_message(user_id, "Проверяем...")
-                await update_quest(user_id, {"step": step + 1})
-                await send_quest_step(user_id)
-            else:
-                await bot.send_message(user_id, riddle['exception'].format(answer=riddle['answer']))
+        riddles = quests.get(quest.quest_name)
+        step = quest.step
+        riddle = riddles[step]
+        # TODO compare levenshtein distance
+        if message.text.lower() == riddle['answer']:
+            await bot.send_message(user_id, "Проверяем...")
+            await update_quest(user_id, {"step": step + 1})
+            await send_quest_step(user_id)
         else:
-            await update_quest(user_id, {"active": False})
-            await bot.send_message(user_id, "Вы уже прошли все загадки этого квеста.")
+            await bot.send_message(user_id, riddle['exception'].format(answer=riddle['answer']))
     else:
-        await bot.send_message(user_id, "Не удалось найти информацию о вашем текущем квесте.")
+        await bot.send_message(user_id,"Похоже у нас проблемы, мы потеряли все ваши данные. Квест придется начать заново.")
 
 
 @dp.message(F.text == '/give')
@@ -225,6 +218,7 @@ async def command_sticker_getter(message: types.Message):
 
 async def main() -> None:
     await dp.start_polling(bot)
+
 
 if __name__ == '__main__':
     models.Base.metadata.create_all(bind=engine)
