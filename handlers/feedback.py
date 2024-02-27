@@ -20,7 +20,7 @@ async def choose_quest(message: types.Message, state: FSMContext):
     if quests:
         answer_keyboard = []
         for quest in quests:
-            answer_keyboard.append([types.InlineKeyboardButton(text=quest, callback_data=f"quest_{quest.quest_name}")])
+            answer_keyboard.append([types.InlineKeyboardButton(text=quest.quest_name, callback_data=f"quest_{quest.quest_name}")])
         await message.answer("Which quest did you finish?",
                                  reply_markup=types.InlineKeyboardMarkup(inline_keyboard=answer_keyboard))
         await state.set_state(FeedbackStates.choose_completed_quest)
@@ -29,7 +29,7 @@ async def choose_quest(message: types.Message, state: FSMContext):
     await state.set_state(FeedbackStates.choose_completed_quest)
 
 
-@router.callback_query(FeedbackStates.choose_completed_quest, lambda message: message.text.startswith('quest_'))
+@router.callback_query(FeedbackStates.choose_completed_quest, lambda query: query.data.startswith('quest_'))
 async def choose_rating(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(chosen_quest=callback_query.data.split('_')[1])
     rates = [[types.InlineKeyboardButton(text=str("⭐" * i), callback_data=f"rating_{i}")] for i in range(1, 6)]
@@ -38,7 +38,7 @@ async def choose_rating(callback_query: types.CallbackQuery, state: FSMContext):
     await state.set_state(FeedbackStates.rate_quest)
 
 
-@router.callback_query(FeedbackStates.rate_quest, lambda message: message.text.startswith('rating_'))
+@router.callback_query(FeedbackStates.rate_quest, lambda query: query.data.startswith('rating_'))
 async def provide_feedback(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(rating=int(callback_query.data.split('_')[1]))
     await callback_query.message.edit_text("Спасибо🙏 за вашу оценку! Пожалуйста, можете еще оставить письменный фидбек (напр. 'интересно...', 'ужасно(...'")
@@ -48,9 +48,9 @@ async def provide_feedback(callback_query: types.CallbackQuery, state: FSMContex
 @router.message(FeedbackStates.provide_feedback)
 async def save_feedback(message: types.Message, state: FSMContext):
     data = await state.get_data()
-    chosen_quest = data.get('quest_name')
+    chosen_quest = data.get('chosen_quest')
     rating = data.get('rating')
     user_id, feedback_text = message.from_user.id, message.text
-    await safe_feedback(user_id, choose_quest, rating, feedback_text)
+    await safe_feedback(user_id, chosen_quest, rating, feedback_text)
     await message.answer("Спасибо за ваш фидбэк!")
     await state.clear()
