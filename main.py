@@ -47,16 +47,6 @@ async def get_help(message: types.Message):
     await command_help_handler(message)
 
 
-@dp.message(lambda message: message.text.lower() == '🏅результаты🏅')
-async def get_results(message: types.Message):
-    await message.answer(responses.get("user_results"))
-
-
-@dp.message(Command('give'))
-async def command_sticker_getter(message: types.Message):
-    await bot.send_sticker(message.from_user.id, sticker="CAACAgIAAxkBAAELPv5lsm2w9MAbdBF4luE65X0ryDgWuAACRyEAAmOvOUjsoVCVkQTwUjQE")
-
-
 async def main() -> None:
     # await bot.delete_webhook(drop_pending_updates=True)
     dp.include_router(feedback.router)
