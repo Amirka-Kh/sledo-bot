@@ -5,8 +5,8 @@ import sys
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import Levenshtein
 
-#TODO import dict with messages
 from message import *
 from config import settings
 from kbs import *
@@ -46,7 +46,7 @@ async def show_quests(message: types.Message):
             continue
         inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
     quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await message.answer("У нас есть следующие активные квесты 🗺:", reply_markup=quest_options)
+    await message.answer(responses.get('quests'), reply_markup=quest_options)
 
 
 def is_quest_finished(user_id, quest_name):
@@ -119,8 +119,12 @@ async def send_quest_step(user_id):
     else:
         await update_quest(user_id, {"active": False, "finished": True})
         if quests_description.get(quest_name).get('offer', None):
-            return await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
-        await bot.send_message(user_id, "Поздравляем, вы прошли квест!")
+            await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
+            await asyncio.sleep(2)
+            return await bot.send_message(user_id, responses.get('so_whats_next'))
+        await bot.send_message(user_id, responses.get('congratulation'))
+        await asyncio.sleep(2)
+        await bot.send_message(user_id, responses.get('so_whats_next'))
 
 
 @dp.callback_query(lambda query: query.data.startswith('answer'))
@@ -132,15 +136,16 @@ async def process_answer(callback_query: types.CallbackQuery):
         riddles = quests.get(quest.quest_name)
         step = quest.step
         riddle = riddles[step]
-        # TODO compare levenshtein distance
-        if option.lower() == riddle['answer']:
+
+        distance = Levenshtein.distance(option, riddle['answer'])
+        if distance < 4:    # less than threshold
             await bot.send_message(user_id, "Проверяем...")
             await update_quest(user_id, {"step": step + 1})
             await send_quest_step(user_id)
         else:
             await bot.send_message(user_id, riddle['exception'].format(answer=option))
     else:
-        await bot.send_message(user_id, "Похоже у нас проблемы, мы потеряли все ваши данные. Квест придется начать заново.")
+        await bot.send_message(user_id, responses.get('db_problem'))
 
 
 @dp.message(F.text == '/help')
@@ -155,12 +160,12 @@ async def show_help(message: types.Message):
 
 @dp.message(lambda message: message.text.lower() == '🏅результаты🏅')
 async def show_results(message: types.Message):
-    await message.answer("Молодец! Спасибо за прохождение квестов 🙏")
+    await message.answer(responses.get("user_results"))
 
 
 @dp.message(lambda message: message.text.lower() == '👍feedback👎')
 async def show_results(message: types.Message):
-    await message.answer("Спасибо за feedback 🙏")
+    await message.answer(responses.get("end_feedback"))
 
 
 def get_quest(user_id):
@@ -200,15 +205,16 @@ async def check_answer(message: types.Message):
         riddles = quests.get(quest.quest_name)
         step = quest.step
         riddle = riddles[step]
-        # TODO compare levenshtein distance
-        if message.text.lower() == riddle['answer']:
+
+        distance = Levenshtein.distance(message.text.lower(), riddle['answer'])
+        if distance < 4:  # less than threshold
             await bot.send_message(user_id, "Проверяем...")
             await update_quest(user_id, {"step": step + 1})
             await send_quest_step(user_id)
         else:
-            await bot.send_message(user_id, riddle['exception'].format(answer=riddle['answer']))
+            await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
     else:
-        await bot.send_message(user_id,"Похоже у нас проблемы, мы потеряли все ваши данные. Квест придется начать заново.")
+        await bot.send_message(user_id, responses.get('db_problem'))
 
 
 @dp.message(F.text == '/give')
