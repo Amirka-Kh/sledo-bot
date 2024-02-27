@@ -21,11 +21,11 @@ class User(Base):
 class Feedback(Base):
     __tablename__ = 'feedback'
     feedback_id = Column(Integer, primary_key=True, nullable=False)
-    feedback_name = Column(String, nullable=False)
+    quest_name = Column(String, nullable=False)
     feedback = Column(String, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=text('now()'))
     author_id = Column(Integer, ForeignKey("users.user_tg_id", ondelete="CASCADE"), nullable=False)
-    grade = Column(Integer)
+    rating = Column(Integer)
 
 
 class Quest(Base):

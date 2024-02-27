@@ -3,7 +3,7 @@ import logging
 import sys
 
 from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import Levenshtein
 
@@ -11,6 +11,7 @@ from message import *
 from config import settings
 from kbs import *
 import models
+from handlers import feedback
 from database import SessionLocal, engine
 
 bot = Bot(settings.token_api)
@@ -148,24 +149,19 @@ async def process_answer(callback_query: types.CallbackQuery):
         await bot.send_message(user_id, responses.get('db_problem'))
 
 
-@dp.message(F.text == '/help')
+@dp.message(Command('help'))
 async def command_help_handler(message: types.Message):
     await bot.send_message(message.from_user.id, text=HELP_COMMAND)
 
 
 @dp.message(lambda message: message.text.lower() == '🙏помощь🙏')
-async def show_help(message: types.Message):
+async def get_help(message: types.Message):
     await command_help_handler(message)
 
 
 @dp.message(lambda message: message.text.lower() == '🏅результаты🏅')
-async def show_results(message: types.Message):
+async def get_results(message: types.Message):
     await message.answer(responses.get("user_results"))
-
-
-@dp.message(lambda message: message.text.lower() == '👍feedback👎')
-async def show_results(message: types.Message):
-    await message.answer(responses.get("end_feedback"))
 
 
 def get_quest(user_id):
@@ -217,12 +213,14 @@ async def check_answer(message: types.Message):
         await bot.send_message(user_id, responses.get('db_problem'))
 
 
-@dp.message(F.text == '/give')
+@dp.message(Command('give'))
 async def command_sticker_getter(message: types.Message):
     await bot.send_sticker(message.from_user.id, sticker="CAACAgIAAxkBAAELPv5lsm2w9MAbdBF4luE65X0ryDgWuAACRyEAAmOvOUjsoVCVkQTwUjQE")
 
 
 async def main() -> None:
+    # await bot.delete_webhook(drop_pending_updates=True)
+    dp.include_router(feedback.router)
     await dp.start_polling(bot)
 
 
