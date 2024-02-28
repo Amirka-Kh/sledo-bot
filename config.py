@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     database_name: str
     database_username: str
     token_api: str
+    payments_provider_token: str
 
     class Config:
         env_file = ".env"

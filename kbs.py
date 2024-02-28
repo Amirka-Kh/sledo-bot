@@ -12,6 +12,9 @@ kb_client = ReplyKeyboardMarkup(
             KeyboardButton(text="🙏Помощь🙏"),
             KeyboardButton(text="🏅Результаты🏅"),
         ],
+        [
+            KeyboardButton(text="👽👂👣👹🔥☠️"),
+        ],
     ],
     resize_keyboard=True,
     one_time_keyboard=True

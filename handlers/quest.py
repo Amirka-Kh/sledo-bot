@@ -151,7 +151,7 @@ async def update_quest(user_id, data):
         db.close()
 
 
-@quest_router.message()
+@quest_router.message(lambda message: message.text.lower() != '👽👂👣👹🔥☠️')
 async def check_answer(message: types.Message):
     # Checking the answer
     user_id = message.from_user.id
