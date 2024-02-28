@@ -1,12 +1,11 @@
 from aiogram import types, Router, F
 from aiogram.filters import Command
-from aiogram.handlers import PreCheckoutQueryHandler
 from aiogram.types import PreCheckoutQuery
 
-# from aiogram.types.successful_payment import SuccessfulPayment
+import models
 
 from config import settings
-
+from database import SessionLocal
 
 payment_router = Router()
 
@@ -28,7 +27,7 @@ async def process_buy_command(message: types.Message):
         description='Инопланетное нашествие',
         provider_token=settings.payments_provider_token,
         currency='rub',
-        photo_url='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYscfUBUbqwGd_DHVhG-ZjCOD7MUpxp4uhNe7toUg4ug&s',
+        photo_url='https://imgur.com/a/dLVuLzy',
         photo_height=512,  # !=0/None, иначе изображение не покажется
         photo_width=512,
         photo_size=512,
@@ -44,8 +43,20 @@ async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True)
 
 
+def update_user_paid_status(user_id):
+    db = SessionLocal()
+    try:
+        quest_query = db.query(models.User).filter(models.User.user_tg_id == user_id)
+        quest_query.update({'paid': True}, synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
+
+
 @payment_router.message(F.successful_payment)
 async def process_successful_payment(message: types.Message):
+    update_user_paid_status(message.from_user.id)
+    # TODO suggest a quest (start quest or start it later)
     print('successful_payment:')
     pmnt = message.successful_payment.to_python()
     for key, val in pmnt.items():
