@@ -19,7 +19,7 @@ async def show_quests(message: types.Message):
     for quest in quests:
         if is_quest_finished(message.from_user.id, quest):
             continue
-        if is_quest_not_allowed_for_user(message.from_user.id, quest):
+        if not is_quest_free_to_user(message.from_user.id, quest):
             continue
         inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
     quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
@@ -33,11 +33,12 @@ def is_quest_finished(user_id, quest_name):
     return False
 
 
-def is_quest_not_allowed_for_user(user_id, quest_name):
-    if quests.get(quest_name).get('unfree', False):
+def is_quest_free_to_user(user_id, quest_name):
+    if not quests.get(quest_name).get('free'):
         user = get_user(user_id)
         if user:
-            return not user.paid
+            return user.paid
+        return True
     return True
 
 
