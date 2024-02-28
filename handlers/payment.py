@@ -24,10 +24,10 @@ async def process_buy_command(message: types.Message):
         await message.answer('pre_buy_demo_alert')
     await message.answer_invoice(
         title='Секретный квест',
-        description='Инопланетное нашествие',
+        description='🕵️‍♂️: - Что ты смог узнать?\n🥷: - Эти "рептилоиды" говорили о каком-то артефакте.\n🕵️‍♂️: - Что это? Что за арте.. ААА..\n🥷: - НЕТ! НЕТ! ОСТАВЬТЕ НАС! АААА.. ',
         provider_token=settings.payments_provider_token,
         currency='rub',
-        photo_url='https://imgur.com/a/dLVuLzy',
+        photo_url='https://drive.google.com/file/d/1oO0JzN-TbLUdG9MyVAdIfO7VpTwaa_QD/view?usp=sharing',
         photo_height=512,  # !=0/None, иначе изображение не покажется
         photo_width=512,
         photo_size=512,
@@ -57,10 +57,4 @@ def update_user_paid_status(user_id):
 @payment_router.message(F.successful_payment)
 async def process_successful_payment(message: types.Message):
     update_user_paid_status(message.from_user.id)
-    # TODO suggest a quest (start quest or start it later)
-    await message.answer(
-        'successful_payment, total amount: {total_amount}, currency: {currency}'.format(
-            total_amount=message.successful_payment.total_amount // 100,
-            currency=message.successful_payment.currency
-        )
-    )
+    await message.answer('Теперь тебе доступен секретный квест🤫. Он теперь доступен по команде "🧩Квесты🧩"')
