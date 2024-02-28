@@ -34,6 +34,7 @@ async def process_buy_command(message: types.Message):
         is_flexible=False,
         prices=[PRICE],
         start_parameter='time-machine-example',
+        protect_content=True,
         payload='some-invoice-payload-for-our-internal-use'
     )
 
@@ -57,11 +58,6 @@ def update_user_paid_status(user_id):
 async def process_successful_payment(message: types.Message):
     update_user_paid_status(message.from_user.id)
     # TODO suggest a quest (start quest or start it later)
-    print('successful_payment:')
-    pmnt = message.successful_payment.to_python()
-    for key, val in pmnt.items():
-        print(f'{key} = {val}')
-
     await message.answer(
         'successful_payment, total amount: {total_amount}, currency: {currency}'.format(
             total_amount=message.successful_payment.total_amount // 100,

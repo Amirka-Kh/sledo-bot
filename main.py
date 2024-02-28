@@ -42,9 +42,9 @@ async def command_help_handler(message: types.Message):
     await bot.send_message(message.from_user.id, text=HELP_COMMAND)
 
 
-@dp.message(lambda message: message.text.lower() == '🙏помощь🙏')
-async def get_help(message: types.Message):
-    await command_help_handler(message)
+# @dp.message(lambda message: message.text.lower() == '🙏помощь🙏')
+# async def get_help(message: types.Message):
+#     await command_help_handler(message)
 
 
 async def main() -> None:

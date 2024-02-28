@@ -19,6 +19,8 @@ async def show_quests(message: types.Message):
     for quest in quests:
         if is_quest_finished(message.from_user.id, quest):
             continue
+        if is_quest_not_allowed_for_user(message.from_user.id, quest):
+            continue
         inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
     quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
     await message.answer(responses.get('quests'), reply_markup=quest_options)
@@ -29,6 +31,14 @@ def is_quest_finished(user_id, quest_name):
     if quest:
         return quest.finished
     return False
+
+
+def is_quest_not_allowed_for_user(user_id, quest_name):
+    if quests.get(quest_name).get('unfree', False):
+        user = get_user(user_id)
+        if user:
+            return not user.paid
+    return True
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('quest'))
@@ -43,7 +53,7 @@ async def process_quest(callback_query: types.CallbackQuery):
         ]
     ])
     #TODO add image
-    await bot.send_message(user_id, quests_description.get(quest_name).get('description'), reply_markup=inline_keyboard)
+    await bot.send_message(user_id, quests.get(quest_name).get('description'), reply_markup=inline_keyboard)
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('start'))
@@ -80,7 +90,7 @@ async def add_quest(user_id, quest_name):
 async def send_quest_step(user_id):
     quest = get_quest(user_id)
     step, quest_name = quest.step, quest.quest_name
-    riddles = quests.get(quest_name)
+    riddles = quests.get(quest_name).get('puzzles')
     if step < len(riddles):
         riddle = riddles[step]
         answer_keyboard = []
@@ -93,8 +103,8 @@ async def send_quest_step(user_id):
         await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
     else:
         await update_quest(user_id, {"active": False, "finished": True})
-        if quests_description.get(quest_name).get('offer', None):
-            await bot.send_message(user_id, quests_description.get(quest_name).get('offer'))
+        if quests.get(quest_name).get('offer', None):
+            await bot.send_message(user_id, quests.get(quest_name).get('offer'))
             await asyncio.sleep(2)
             return await bot.send_message(user_id, responses.get('so_whats_next'))
         await bot.send_message(user_id, responses.get('congratulation'))
@@ -108,7 +118,7 @@ async def process_answer(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
     if quest:
-        riddles = quests.get(quest.quest_name)
+        riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
         riddle = riddles[step]
 
@@ -121,6 +131,15 @@ async def process_answer(callback_query: types.CallbackQuery):
             await bot.send_message(user_id, riddle['exception'].format(answer=option))
     else:
         await bot.send_message(user_id, responses.get('db_problem'))
+
+
+def get_user(user_id):
+    db = SessionLocal()
+    try:
+        user = db.query(models.User).filter(models.User.user_tg_id == user_id).first()
+        return user
+    finally:
+        db.close()
 
 
 def get_quest(user_id):
@@ -157,7 +176,7 @@ async def check_answer(message: types.Message):
     user_id = message.from_user.id
     quest = get_quest(user_id)
     if quest:
-        riddles = quests.get(quest.quest_name)
+        riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
         riddle = riddles[step]
 
