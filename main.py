@@ -9,7 +9,7 @@ from message import *
 from config import settings
 from kbs import *
 import models
-from handlers import feedback, quest, payment
+from handlers import feedback, quest, payment, results
 from database import SessionLocal, engine
 
 bot = Bot(settings.token_api)
@@ -51,6 +51,7 @@ async def main() -> None:
     # await bot.delete_webhook(drop_pending_updates=True)
     dp.include_router(payment.payment_router)
     dp.include_router(feedback.router)
+    dp.include_router(results.result_router)
     dp.include_router(quest.quest_router)
     await dp.start_polling(bot)
 

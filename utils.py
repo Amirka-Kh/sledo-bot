@@ -24,3 +24,14 @@ async def safe_feedback(user_id, chosen_quest, rating, feedback_text):
         db.commit()
     finally:
         db.close()
+        
+        
+def is_completed_quest(user_id):
+    db = SessionLocal()
+    try:
+        quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.finished == True).first()
+        if quest:
+            return True
+        return False
+    finally:
+        db.close()
