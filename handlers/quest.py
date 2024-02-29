@@ -23,6 +23,7 @@ async def show_quests(message: types.Message):
             continue
         inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
     quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
+    await message.answer_sticker('CAACAgIAAxkBAAELk8Jl4GF1ScqCo96ktBBW8xKzgjNToAACSQIAAladvQoqlwydCFMhDjQE')
     await message.answer(responses.get('quests'), reply_markup=quest_options)
 
 
@@ -80,10 +81,16 @@ async def add_quest(user_id, quest_name):
         quest_query = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.active == True)
         quest_query.update({"active": False}, synchronize_session=False)
         db.commit()
-        # Add new quest
-        new_quest = models.Quest(player_id=user_id, quest_name=quest_name, active=True)
-        db.add(new_quest)
-        db.commit()
+        # Add new quest if not exists
+        quest = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name).first()
+        if not quest:
+            new_quest = models.Quest(player_id=user_id, quest_name=quest_name, active=True)
+            db.add(new_quest)
+            db.commit()
+        else:
+            quest_query = db.query(models.Quest).filter(models.Quest.player_id == user_id, models.Quest.quest_name == quest_name)
+            quest_query.update({"active": True}, synchronize_session=False)
+            db.commit()
     finally:
         db.close()
 
@@ -105,9 +112,8 @@ async def send_quest_step(user_id):
     else:
         await update_quest(user_id, {"active": False, "finished": True})
         if quests.get(quest_name).get('offer', None):
-            await bot.send_message(user_id, quests.get(quest_name).get('offer'))
-            await asyncio.sleep(2)
-            return await bot.send_message(user_id, responses.get('so_whats_next'))
+            #TODO show image
+            return await bot.send_message(user_id, quests.get(quest_name).get('offer'))
         await bot.send_message(user_id, responses.get('congratulation'))
         await asyncio.sleep(2)
         await bot.send_message(user_id, responses.get('so_whats_next'))
@@ -125,10 +131,13 @@ async def process_answer(callback_query: types.CallbackQuery):
 
         distance = Levenshtein.distance(option, riddle['answer'])
         if distance < 4:    # less than threshold
-            await bot.send_message(user_id, "Проверяем...")
+            await bot.send_message(user_id, riddle['wait'])
             await update_quest(user_id, {"step": step + 1})
+            await asyncio.sleep(2)
             await send_quest_step(user_id)
         else:
+            await bot.send_message(user_id, riddle['wait'])
+            await asyncio.sleep(2)
             await bot.send_message(user_id, riddle['exception'].format(answer=option))
     else:
         await bot.send_message(user_id, responses.get('db_problem'))
@@ -183,10 +192,13 @@ async def check_answer(message: types.Message):
 
         distance = Levenshtein.distance(message.text.lower(), riddle['answer'])
         if distance < 4:  # less than threshold
-            await bot.send_message(user_id, "Проверяем...")
+            await bot.send_message(user_id, riddle['wait'])
             await update_quest(user_id, {"step": step + 1})
+            await asyncio.sleep(2)
             await send_quest_step(user_id)
         else:
+            await bot.send_message(user_id, riddle['wait'])
+            await asyncio.sleep(2)
             await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
     else:
         await bot.send_message(user_id, responses.get('db_problem'))
