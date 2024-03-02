@@ -4,6 +4,7 @@ import sys
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
+from aiogram.enums.parse_mode import ParseMode
 
 from message import *
 from config import settings
@@ -12,7 +13,7 @@ import models
 from handlers import feedback, quest, payment, results, helper
 from database import SessionLocal, engine
 
-bot = Bot(settings.token_api)
+bot = Bot(settings.token_api, parse_mode=ParseMode.MARKDOWN)
 
 dp = Dispatcher()
 
