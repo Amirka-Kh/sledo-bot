@@ -18,7 +18,7 @@ async def process_terms_command(message: types.Message):
     await message.reply('terms', reply=False)
 
 
-@payment_router.message(F.text == '👽👂👣👹🔥☠️')
+@payment_router.message(F.text == '👑Платные квесты🎩')
 async def process_buy_command(message: types.Message):
     if settings.payments_provider_token.split(':')[1] == 'TEST':
         await message.answer('Это тестовый платеж, *do not worry*')
