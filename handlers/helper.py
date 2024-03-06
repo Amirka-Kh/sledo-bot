@@ -13,4 +13,4 @@ async def command_help_handler(message: types.Message):
 
 @helper_router.message(lambda message: message.text.lower() == '🙏помощь🙏')
 async def get_results(message: types.Message):
-    await message.answer(HELP_COMMAND, parse_mode=ParseMode.MARKDOWN)
+    await message.answer(HELP_COMMAND)

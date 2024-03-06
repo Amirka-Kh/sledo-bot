@@ -13,7 +13,7 @@ import models
 from handlers import feedback, quest, payment, results, helper
 from database import SessionLocal, engine
 
-bot = Bot(settings.token_api, parse_mode=ParseMode.MARKDOWN)
+bot = Bot(settings.token_api, parse_mode=ParseMode.MARKDOWN_V2)
 
 dp = Dispatcher()
 

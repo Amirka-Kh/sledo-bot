@@ -15,6 +15,9 @@ quest_router = Router()
 
 @quest_router.message(lambda message: message.text.lower() == '🧩квесты🧩')
 async def show_quests(message: types.Message):
+    # TODO quests and quest's options should be one message block (use update)
+    # TODO check if all is finished, say "you finished all"
+    # TODO check if free ones are finished, suggest paid one
     inline_keyboard = []
     for quest in quests:
         if is_quest_finished(message.from_user.id, quest):
@@ -64,6 +67,7 @@ async def process_start(callback_query: types.CallbackQuery):
     quest_name = callback_query.data.split('_')[2]
     user_id = callback_query.from_user.id
     if option == 'start':
+        # TODO change status of active quest to False
         await add_quest(user_id, quest_name)
         await bot.answer_callback_query(callback_query.id)
         await send_quest_step(user_id)
