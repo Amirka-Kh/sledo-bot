@@ -1,4 +1,4 @@
-from aiogram import Router, types
+from aiogram import Router, types, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -13,7 +13,7 @@ class FeedbackStates(StatesGroup):
     provide_feedback = State()
 
 
-@router.message(lambda message: message.text.lower() == '👍feedback👎')
+@router.message(F.text == '👍Feedback👎')
 async def choose_quest(message: types.Message, state: FSMContext):
     user_id = message.from_user.id
     quests = get_completed_quests(user_id)

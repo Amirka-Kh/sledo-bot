@@ -6,7 +6,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart
 from aiogram.enums.parse_mode import ParseMode
 
-from message import *
+from defaults import *
 from config import settings
 from kbs import *
 import models

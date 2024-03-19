@@ -1,5 +1,8 @@
+import os
+
 from database import SessionLocal
 import models
+# import cv2
 
 
 def get_completed_quests(user_id):
@@ -35,3 +38,14 @@ def is_completed_quest(user_id):
         return False
     finally:
         db.close()
+
+
+# async def calculate_similarity(local_image_path, message):
+#     local_image = cv2.imread(local_image_path)
+#     photo = await message.photo[-1].download()
+#     received_image = cv2.imread(photo)
+#     gray_image1 = cv2.cvtColor(local_image, cv2.COLOR_BGR2GRAY)
+#     gray_image2 = cv2.cvtColor(received_image, cv2.COLOR_BGR2GRAY)
+#     ssim = cv2.compareSSIM(gray_image1, gray_image2)
+#     os.remove(photo)
+#     return await ssim

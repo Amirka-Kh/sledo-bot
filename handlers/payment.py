@@ -33,7 +33,7 @@ async def process_buy_command(message: types.Message):
         photo_size=512,
         is_flexible=False,
         prices=[PRICE],
-        start_parameter='time-machine-example',
+        # start_parameter='time-machine-example',
         protect_content=True,
         payload='some-invoice-payload-for-our-internal-use'
     )

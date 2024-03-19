@@ -1,19 +1,22 @@
 import asyncio
+import os
 
-from aiogram import types, Router
+from aiogram import types, Router, F
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import Levenshtein
 
-from message import *
+from quests.message import *
+from defaults import *
 import models
 from database import SessionLocal
 from main import bot
+from services.image_recognition import prepare_model, predict_image
 
-
+model = prepare_model()
 quest_router = Router()
 
 
-@quest_router.message(lambda message: message.text.lower() == '🧩квесты🧩')
+@quest_router.message(F.text == '🧩Квесты🧩')
 async def show_quests(message: types.Message):
     available_quests = get_available_quests(message.from_user.id)
 
@@ -205,8 +208,45 @@ async def update_quest(user_id, data):
         db.close()
 
 
+async def remove_file(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+
+@quest_router.message(F.photo)
+async def handle_photo(message: types.Message):
+    user_id = message.from_user.id
+    quest = get_quest(user_id)
+    if quest:
+        riddles = quests.get(quest.quest_name).get('puzzles')
+        step = quest.step
+        riddle = riddles[step]
+
+        # Assuming you want to use the last photo sent by the user
+        photo = message.photo[-1]
+        file_id = photo.file_id
+        file = await bot.get_file(file_id)
+        file_path = 'images/' + file.file_path.split('.')[-1]
+        file_content = await bot.download_file(file.file_path)
+        file = open(file_path, 'wb')
+        file.write(file_content.getvalue())
+
+        # Assuming you have a function to process the photo
+        await bot.send_message(user_id, riddle['wait'])
+        answer = predict_image(file_path, model)
+        file.close()
+        await remove_file(file_path)
+        if answer[0] == riddle['answer_photo']:
+            await update_quest(user_id, {"step": step + 1})
+            await send_quest_step(user_id)
+        else:
+            await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
+    else:
+        await bot.send_message(user_id, responses.get('db_problem'))
+
+
 @quest_router.message(lambda message: message.text.lower() != '👽👂👣👹🔥☠️')
-async def check_answer(message: types.Message):
+async def check_message_answer(message: types.Message):
     # Checking the answer
     user_id = message.from_user.id
     quest = get_quest(user_id)
