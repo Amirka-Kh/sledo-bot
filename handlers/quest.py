@@ -2,7 +2,7 @@ import asyncio
 import os
 
 from aiogram import types, Router, F
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, FSInputFile
 import Levenshtein
 
 from quests.message import *
@@ -135,6 +135,8 @@ async def send_quest_step(user_id):
             return await bot.send_photo(user_id, riddle['image'],
                                         caption=riddle['description'], reply_markup=answer_options)
         await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
+        if riddle['audio']:
+            await bot.send_voice(user_id, FSInputFile(riddle['audio']))
     else:
         await update_quest(user_id, {"active": False, "finished": True})
         if quests.get(quest_name).get('offer', None):
@@ -148,7 +150,7 @@ async def send_quest_step(user_id):
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('answer'))
-async def process_answer(callback_query: types.CallbackQuery):
+async def check_inline_answer(callback_query: types.CallbackQuery):
     option = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
@@ -214,7 +216,7 @@ async def remove_file(file_path):
 
 
 @quest_router.message(F.photo)
-async def handle_photo(message: types.Message):
+async def check_photo_answer(message: types.Message):
     user_id = message.from_user.id
     quest = get_quest(user_id)
     if quest:
@@ -245,7 +247,7 @@ async def handle_photo(message: types.Message):
         await bot.send_message(user_id, responses.get('db_problem'))
 
 
-@quest_router.message(lambda message: message.text.lower() != '👽👂👣👹🔥☠️')
+@quest_router.message(F.text)
 async def check_message_answer(message: types.Message):
     # Checking the answer
     user_id = message.from_user.id
