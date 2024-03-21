@@ -21,7 +21,7 @@ async def choose_quest(message: types.Message, state: FSMContext):
         answer_keyboard = []
         for quest in quests:
             answer_keyboard.append([types.InlineKeyboardButton(text=quest.quest_name, callback_data=f"quest_{quest.quest_name}")])
-        await message.answer("Which quest did you finish?",
+        await message.answer("Какой квест хотите прокомментировать?",
                                  reply_markup=types.InlineKeyboardMarkup(inline_keyboard=answer_keyboard))
         await state.set_state(FeedbackStates.choose_completed_quest)
     else:
@@ -33,7 +33,7 @@ async def choose_quest(message: types.Message, state: FSMContext):
 async def choose_rating(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(chosen_quest=callback_query.data.split('_')[1])
     rates = [[types.InlineKeyboardButton(text=str("⭐" * i), callback_data=f"rating_{i}")] for i in range(1, 6)]
-    await callback_query.message.edit_text("Please rate your satisfaction from 1 to 5 stars:",
+    await callback_query.message.edit_text("Оцените квест от 1 до 5 звездочек:",
                                            reply_markup=types.InlineKeyboardMarkup(inline_keyboard=rates))
     await state.set_state(FeedbackStates.rate_quest)
 

@@ -16,6 +16,11 @@ model = prepare_model()
 quest_router = Router()
 
 
+@quest_router.message(F.text == '👽👂👣👹🔥☠️')
+async def say_wait(message: types.Message):
+    await message.answer(responses.get('wait'))
+
+
 @quest_router.message(F.text == '🧩Квесты🧩')
 async def show_quests(message: types.Message):
     available_quests = get_available_quests(message.from_user.id)
