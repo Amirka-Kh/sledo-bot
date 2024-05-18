@@ -41,7 +41,7 @@ async def choose_rating(callback_query: types.CallbackQuery, state: FSMContext):
 @router.callback_query(FeedbackStates.rate_quest, lambda query: query.data.startswith('rating_'))
 async def provide_feedback(callback_query: types.CallbackQuery, state: FSMContext):
     await state.update_data(rating=int(callback_query.data.split('_')[1]))
-    await callback_query.message.edit_text("Сезнең бәяләү өчен рәхмәт\! Зинһар 🙏 сез әле язма фидбекны калдыра аласыз (мәсәлән, 'кызык...', 'бик начар...')")
+    await callback_query.message.edit_text("Сезнең бәяләү өчен рәхмәт\! Зинһар 🙏 сез әле язма фидбекны калдыра аласыз \(мәсәлән, 'кызык\.\.\.', 'бик начар\.\.\.'\)")
     await state.set_state(FeedbackStates.provide_feedback)
 
 

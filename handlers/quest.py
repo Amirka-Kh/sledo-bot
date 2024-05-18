@@ -137,7 +137,7 @@ async def send_quest_step(user_id):
                                             caption=quests.get(quest_name).get('offer'))
             return await bot.send_message(user_id, quests.get(quest_name).get('offer'))
         await bot.send_message(user_id, responses.get('congratulation'))
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         return await bot.send_message(user_id, responses.get('so_whats_next'))
     riddles = quests.get(quest_name).get('puzzles')
     riddle = riddles[str(step)]
@@ -163,9 +163,11 @@ async def check_inline_answer(callback_query: types.CallbackQuery):
         riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
         riddle = riddles[str(step)]
-        await bot.send_message(user_id, riddle['wait'])
+        if riddle['wait']:
+            await bot.send_message(user_id, riddle['wait'])
+            await asyncio.sleep(1)
         await update_quest(user_id, {"step": int(next_step)})
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         await send_quest_step(user_id)
         # distance = Levenshtein.distance(option, riddle['answer'])
         # if distance < 4:    # less than threshold
