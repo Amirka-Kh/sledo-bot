@@ -10,7 +10,7 @@ from database import SessionLocal
 payment_router = Router()
 
 
-PRICE = types.LabeledPrice(label='Дополнительные квесты', amount=20000)
+PRICE = types.LabeledPrice(label='Өстәмә квестлар', amount=20000)
 
 
 @payment_router.message(Command('terms'))
@@ -18,13 +18,13 @@ async def process_terms_command(message: types.Message):
     await message.reply('terms', reply=False)
 
 
-@payment_router.message(F.text == '👑Платные квесты🎩')
+@payment_router.message(F.text == '👑Түләүле квестлар👑')
 async def process_buy_command(message: types.Message):
     # if settings.payments_provider_token.split(':')[1] == 'TEST':
     #     await message.answer('Это тестовый платеж, *do not worry*')
     await message.answer_invoice(
-        title='Секретный квест',
-        description='Вас ждут еще много не раскрытых дел🎩 Оформите разовую подписку👑 и получайте новый квест каждую неделю⭐️',
+        title='Серле квест',
+        description='Сезне тагын бик күп ачылмаган эшләр көтә🎩 Бер тапкыр подписка алып, атна саен яңа квест алыгыз ⭐ ️',
         provider_token=settings.payments_provider_token,
         currency='RUB',
         photo_url='https://storage.yandexcloud.net/sledobot/teenagers.jpg',
@@ -57,4 +57,4 @@ def update_user_paid_status(user_id):
 @payment_router.message(F.successful_payment)
 async def process_successful_payment(message: types.Message):
     update_user_paid_status(message.from_user.id)
-    await message.answer('Теперь тебе доступен секретный квест🤫. Он теперь доступен по команде "🧩Квесты🧩"')
+    await message.answer('Хәзер сиңа яшерен квест ачык. Ул хәзер "🧩Маҗаралар🧩 " командасы буенча чыга')

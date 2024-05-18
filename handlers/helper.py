@@ -10,6 +10,6 @@ async def command_help_handler(message: types.Message):
     await message.answer(HELP_COMMAND)
 
 
-@helper_router.message(F.text == '🙏Помощь🙏')
+@helper_router.message(F.text == '🙏Ярдәм🙏')
 async def get_results(message: types.Message):
     await message.answer(HELP_COMMAND)
