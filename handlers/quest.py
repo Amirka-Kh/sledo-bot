@@ -83,6 +83,15 @@ async def process_quest(callback_query: types.CallbackQuery):
     )
 
 
+@quest_router.callback_query(lambda query: query.data.startswith('again'))
+async def process_quest(callback_query: types.CallbackQuery):
+    decision = callback_query.data.split('_')[1]
+    await bot.answer_callback_query(callback_query.id)
+    if decision == 'back':
+        return await bot.send_message(callback_query.from_user.id, responses.get('see_you'))
+    return await send_quest_step(callback_query.from_user.id)
+
+
 @quest_router.callback_query(lambda query: query.data.startswith('start'))
 async def process_start(callback_query: types.CallbackQuery):
     option = callback_query.data.split('_')[1]
@@ -129,10 +138,24 @@ async def add_quest(user_id, quest_name):
         db.close()
 
 
+async def start_again(user_id, step):
+    step = abs(step) * 10
+    start_again_options = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Икенче тапкыр ❌', callback_data=f"again_back"),
+            InlineKeyboardButton(text='Эйдә ✅', callback_data="again_start"),
+        ]
+    ])
+    await update_quest(user_id, {"step": 1})
+    return await bot.send_message(user_id, responses['start_again'].format(step), reply_markup=start_again_options)
+
+
 async def send_quest_step(user_id):
     quest = get_quest(user_id)
     step, quest_name = quest.step, quest.quest_name
-    if step == -1:
+    if step > -10 & step <= -1:
+        return await start_again(user_id, step)
+    if step == -10:
         await update_quest(user_id, {"active": False, "finished": True})
         if quests.get(quest_name).get('offer', None):
             if quests.get(quest_name).get('offer_image'):
@@ -147,10 +170,11 @@ async def send_quest_step(user_id):
     answer_keyboard = []
     for answer in riddle['options']:
         callback_data = f"answer_{riddle['options'][answer]}"
-        print(f"Callback data: {callback_data}")
+        # print(f"Callback data: {callback_data}")
         if len(callback_data) > 64:
             callback_data = callback_data[:64]
-        callback_data = ''.join(e for e in callback_data if e.isalnum() or e == '_')  # Remove invalid characters
+        # callback_data = ''.join(e for e in callback_data if e.isalnum() or e == '_')
+        # print(f"Callback data after: {callback_data}")
 
         answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=callback_data)])
     answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
@@ -167,6 +191,7 @@ async def send_quest_step(user_id):
 async def check_inline_answer(callback_query: types.CallbackQuery):
     # option = callback_query.data.split('_')[1]
     next_step = callback_query.data.split('_')[1]
+    # print(f"Next step: {next_step}")
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
     if quest:
