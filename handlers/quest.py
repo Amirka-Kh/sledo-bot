@@ -16,24 +16,24 @@ model = prepare_model()
 quest_router = Router()
 
 
-@quest_router.message(F.text == '👽👂👣👹🔥☠️')
+@quest_router.message(F.text == '👽👂👣🔥☠️')
 async def say_wait(message: types.Message):
     await message.answer(responses.get('wait'))
 
 
-@quest_router.message(F.text == '🧩Квесты🧩')
+@quest_router.message(F.text == '🧩Маҗаралар🧩')
 async def show_quests(message: types.Message):
     available_quests = get_available_quests(message.from_user.id)
 
     if not available_quests:
-        await message.answer_sticker('CAACAgIAAxkBAAELngRl6BRy2OmPCcArsg6NV2_9FGuwJQACBAEAAladvQreBNF6Zmb3bDQE')
+        await message.answer_sticker('CAACAgIAAxkBAAEMJPVmSQOhWySNZMXqxuRavyVlO6zvjQACeQEAAiteUwulfjaelBVlqzUE')
         return await message.answer(responses.get('no_quests'))
 
     inline_keyboard = []
     for quest in available_quests:
         inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
     quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-    await message.answer_sticker('CAACAgIAAxkBAAELk8Jl4GF1ScqCo96ktBBW8xKzgjNToAACSQIAAladvQoqlwydCFMhDjQE')
+    await message.answer_sticker('CAACAgIAAxkBAAEMJPlmSQPFmFRKWSbfmFr304ZTyqvjGQACaQEAAiteUwuCQO6F5TN9lDUE')
     await message.answer(responses.get('quests'), reply_markup=quest_options)
 
 
@@ -69,14 +69,27 @@ async def process_quest(callback_query: types.CallbackQuery):
     await bot.answer_callback_query(callback_query.id)
     inline_keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text='Назад ❌', callback_data=f"start_back_nothing"),
-            InlineKeyboardButton(text='Начать ✅', callback_data="start_start_{}".format(quest_name)),
+            InlineKeyboardButton(text='Кире кайту ❌', callback_data=f"start_back_nothing"),
+            InlineKeyboardButton(text='Башлау ✅', callback_data="start_start_{}".format(quest_name)),
         ]
     ])
-    await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                message_id=callback_query.message.message_id,
-                                text=quests.get(quest_name).get('description'),
-                                reply_markup=inline_keyboard)
+    # Delete the original text message
+    await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+    return await bot.send_photo(
+        chat_id=callback_query.message.chat.id,  # Chat ID
+        photo=quests.get(quest_name).get('description_image'),  # Image URL or file ID
+        caption=quests.get(quest_name).get('description'),  # Caption text
+        reply_markup=inline_keyboard  # Inline keyboard markup
+    )
+
+
+@quest_router.callback_query(lambda query: query.data.startswith('again'))
+async def process_quest(callback_query: types.CallbackQuery):
+    decision = callback_query.data.split('_')[1]
+    await bot.answer_callback_query(callback_query.id)
+    if decision == 'back':
+        return await bot.send_message(callback_query.from_user.id, responses.get('see_you'))
+    return await send_quest_step(callback_query.from_user.id)
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('start'))
@@ -100,10 +113,9 @@ async def process_start(callback_query: types.CallbackQuery):
         for quest in available_quests:
             inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
         quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-        return await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                           message_id=callback_query.message.message_id,
-                                           text=responses.get('quests'),
-                                           reply_markup=quest_options)
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+        return await bot.send_message(message.chat.id, responses.get('quests'), reply_markup=quest_options)
+        # return await show_quests(callback_query.message)
 
 
 async def add_quest(user_id, quest_name):
@@ -126,23 +138,24 @@ async def add_quest(user_id, quest_name):
         db.close()
 
 
+async def start_again(user_id, step):
+    step = abs(step) * 10
+    start_again_options = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text='Икенче тапкыр ❌', callback_data=f"again_back"),
+            InlineKeyboardButton(text='Эйдә ✅', callback_data="again_start"),
+        ]
+    ])
+    await update_quest(user_id, {"step": 1})
+    return await bot.send_message(user_id, responses['start_again'].format(step), reply_markup=start_again_options)
+
+
 async def send_quest_step(user_id):
     quest = get_quest(user_id)
     step, quest_name = quest.step, quest.quest_name
-    riddles = quests.get(quest_name).get('puzzles')
-    if step < len(riddles):
-        riddle = riddles[step]
-        answer_keyboard = []
-        for answer in riddle['options']:
-            answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=f"answer_{answer}")])
-        answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
-        if riddle['image']:
-            return await bot.send_photo(user_id, riddle['image'],
-                                        caption=riddle['description'], reply_markup=answer_options)
-        await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
-        if riddle['audio']:
-            await bot.send_voice(user_id, FSInputFile(riddle['audio']))
-    else:
+    if step > -10 & step <= -1:
+        return await start_again(user_id, step)
+    if step == -10:
         await update_quest(user_id, {"active": False, "finished": True})
         if quests.get(quest_name).get('offer', None):
             if quests.get(quest_name).get('offer_image'):
@@ -150,32 +163,59 @@ async def send_quest_step(user_id):
                                             caption=quests.get(quest_name).get('offer'))
             return await bot.send_message(user_id, quests.get(quest_name).get('offer'))
         await bot.send_message(user_id, responses.get('congratulation'))
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         return await bot.send_message(user_id, responses.get('so_whats_next'))
+    riddles = quests.get(quest_name).get('puzzles')
+    riddle = riddles[str(step)]
+    answer_keyboard = []
+    for answer in riddle['options']:
+        callback_data = f"answer_{riddle['options'][answer]}"
+        # print(f"Callback data: {callback_data}")
+        if len(callback_data) > 64:
+            callback_data = callback_data[:64]
+        # callback_data = ''.join(e for e in callback_data if e.isalnum() or e == '_')
+        # print(f"Callback data after: {callback_data}")
+
+        answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=callback_data)])
+    answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
+    if riddle['image']:
+        return await bot.send_photo(user_id, riddle['image'],
+                                    caption=riddle['description'], reply_markup=answer_options)
+    if riddle['audio']:
+        await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
+        return await bot.send_voice(user_id, FSInputFile(riddle['audio']))
+    return await bot.send_message(user_id, riddle['description'], reply_markup=answer_options)
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('answer'))
 async def check_inline_answer(callback_query: types.CallbackQuery):
-    option = callback_query.data.split('_')[1]
+    # option = callback_query.data.split('_')[1]
+    next_step = callback_query.data.split('_')[1]
+    # print(f"Next step: {next_step}")
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
     if quest:
         riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
-        riddle = riddles[step]
-
-        distance = Levenshtein.distance(option, riddle['answer'])
-        if distance < 4:    # less than threshold
+        riddle = riddles[str(step)]
+        if riddle['wait']:
             await bot.send_message(user_id, riddle['wait'])
-            await update_quest(user_id, {"step": step + 1})
-            await asyncio.sleep(2)
-            await send_quest_step(user_id)
-        else:
-            await bot.send_message(user_id, riddle['wait'])
-            await asyncio.sleep(2)
-            await bot.send_message(user_id, riddle['exception'].format(answer=option))
+            await asyncio.sleep(1)
+        await update_quest(user_id, {"step": int(next_step)})
+        await asyncio.sleep(1)
+        return await send_quest_step(user_id)
+        # distance = Levenshtein.distance(option, riddle['answer'])
+        # if distance < 4:    # less than threshold
+        #     await bot.send_message(user_id, riddle['wait'])
+        #     await update_quest(user_id, {"step": int(next_step)})
+        #     await asyncio.sleep(2)
+        #     await send_quest_step(user_id)
+        # else:
+        #     await bot.send_message(user_id, riddle['wait'])
+        #     await asyncio.sleep(2)
+        #     await bot.send_message(user_id, riddle['exception'].format(answer=option))
     else:
-        await bot.send_message(user_id, responses.get('db_problem'))
+        return await bot.send_message(user_id, responses.get('db_problem'))
 
 
 def get_user(user_id):
@@ -227,7 +267,7 @@ async def check_photo_answer(message: types.Message):
     if quest:
         riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
-        riddle = riddles[step]
+        riddle = riddles[str(step)]
 
         # Assuming you want to use the last photo sent by the user
         photo = message.photo[-1]
@@ -244,12 +284,12 @@ async def check_photo_answer(message: types.Message):
         file.close()
         await remove_file(file_path)
         if answer[0] == riddle['answer_photo']:
-            await update_quest(user_id, {"step": step + 1})
-            await send_quest_step(user_id)
+            await update_quest(user_id, {"step": int(step) + 1})
+            return await send_quest_step(user_id)
         else:
-            await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
+            return await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
     else:
-        await bot.send_message(user_id, responses.get('db_problem'))
+        return await bot.send_message(user_id, responses.get('db_problem'))
 
 
 @quest_router.message(F.text)
@@ -260,17 +300,17 @@ async def check_message_answer(message: types.Message):
     if quest:
         riddles = quests.get(quest.quest_name).get('puzzles')
         step = quest.step
-        riddle = riddles[step]
+        riddle = riddles[str(step)]
 
         distance = Levenshtein.distance(message.text.lower(), riddle['answer'])
         if distance < 4:  # less than threshold
             await bot.send_message(user_id, riddle['wait'])
-            await update_quest(user_id, {"step": step + 1})
+            await update_quest(user_id, {"step": int(step) + 1})
             await asyncio.sleep(2)
-            await send_quest_step(user_id)
+            return await send_quest_step(user_id)
         else:
             await bot.send_message(user_id, riddle['wait'])
             await asyncio.sleep(2)
-            await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
+            return await bot.send_message(user_id, riddle['exception'].format(answer=message.text.lower()))
     else:
-        await bot.send_message(user_id, responses.get('db_problem'))
+        return await bot.send_message(user_id, responses.get('db_problem'))
