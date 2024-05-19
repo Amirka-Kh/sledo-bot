@@ -10,8 +10,8 @@ from database import SessionLocal
 payment_router = Router()
 
 
-PRICE = types.LabeledPrice(label='Өстәмә квестлар', amount=20000)
-
+# PRICE = types.LabeledPrice(label='Өстәмә квестлар', amount=20000)
+PRICE = types.LabeledPrice(label='Батыр кире кайта', amount=20000)
 
 @payment_router.message(Command('terms'))
 async def process_terms_command(message: types.Message):
@@ -24,7 +24,7 @@ async def process_buy_command(message: types.Message):
     #     await message.answer('Это тестовый платеж, *do not worry*')
     await message.answer_invoice(
         title='Серле квест',
-        description='Сезне тагын бик күп ачылмаган эшләр көтә🎩 Бер тапкыр подписка алып, атна саен яңа квест алыгыз ⭐ ️',
+        description='Сезне тагын бик күп ачылмаган эшләр көтә. Бер тапкыр подписка алып, атна саен яңа квест алыгыз ️',
         provider_token=settings.payments_provider_token,
         currency='RUB',
         photo_url='https://storage.yandexcloud.net/sledobot/teenagers.jpg',
@@ -57,4 +57,4 @@ def update_user_paid_status(user_id):
 @payment_router.message(F.successful_payment)
 async def process_successful_payment(message: types.Message):
     update_user_paid_status(message.from_user.id)
-    await message.answer('Хәзер сиңа яшерен квест ачык. Ул хәзер "🧩Маҗаралар🧩 " командасы буенча чыга')
+    await message.answer('Хәзер сиңа яшерен квест ачык\. Ул хәзер "🧩Маҗаралар🧩 " командасы буенча чыга')

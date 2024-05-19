@@ -25,7 +25,7 @@ async def choose_quest(message: types.Message, state: FSMContext):
                                  reply_markup=types.InlineKeyboardMarkup(inline_keyboard=answer_keyboard))
         await state.set_state(FeedbackStates.choose_completed_quest)
     else:
-        return await message.answer("Сез әле квестны үтмәдегез 🥺\. Квест тәмамланганнан соң безгә кире кайтыгыз")
+        return await message.answer("Сез әле квестны үтмәдегез 🥺 Квест тәмамланганнан соң безгә кире кайтыгыз")
     await state.set_state(FeedbackStates.choose_completed_quest)
 
 

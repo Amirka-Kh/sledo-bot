@@ -73,14 +73,14 @@ async def process_quest(callback_query: types.CallbackQuery):
             InlineKeyboardButton(text='Башлау ✅', callback_data="start_start_{}".format(quest_name)),
         ]
     ])
-    await bot.edit_message_media(chat_id=callback_query.message.chat.id,
-                                 message_id=callback_query.message.message_id,
-                                 media=types.InputMediaPhoto(media=quests.get(quest_name).get('description_image')),
-                                 reply_markup=inline_keyboard)
-    await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                message_id=callback_query.message.message_id,
-                                text=quests.get(quest_name).get('description'),
-                                reply_markup=inline_keyboard)
+    # Delete the original text message
+    await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+    return await bot.send_photo(
+        chat_id=callback_query.message.chat.id,  # Chat ID
+        photo=quests.get(quest_name).get('description_image'),  # Image URL or file ID
+        caption=quests.get(quest_name).get('description'),  # Caption text
+        reply_markup=inline_keyboard  # Inline keyboard markup
+    )
 
 
 @quest_router.callback_query(lambda query: query.data.startswith('start'))
@@ -104,10 +104,9 @@ async def process_start(callback_query: types.CallbackQuery):
         for quest in available_quests:
             inline_keyboard.append([InlineKeyboardButton(text=quest, callback_data=f"quest_{quest}")])
         quest_options = InlineKeyboardMarkup(inline_keyboard=inline_keyboard)
-        return await bot.edit_message_text(chat_id=callback_query.message.chat.id,
-                                           message_id=callback_query.message.message_id,
-                                           text=responses.get('quests'),
-                                           reply_markup=quest_options)
+        await bot.delete_message(chat_id=callback_query.message.chat.id, message_id=callback_query.message.message_id)
+        return await bot.send_message(message.chat.id, responses.get('quests'), reply_markup=quest_options)
+        # return await show_quests(callback_query.message)
 
 
 async def add_quest(user_id, quest_name):
@@ -147,7 +146,13 @@ async def send_quest_step(user_id):
     riddle = riddles[str(step)]
     answer_keyboard = []
     for answer in riddle['options']:
-        answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=f"answer_{answer}_{riddle['options'][answer]}")])
+        callback_data = f"answer_{riddle['options'][answer]}"
+        print(f"Callback data: {callback_data}")
+        if len(callback_data) > 64:
+            callback_data = callback_data[:64]
+        callback_data = ''.join(e for e in callback_data if e.isalnum() or e == '_')  # Remove invalid characters
+
+        answer_keyboard.append([InlineKeyboardButton(text=answer, callback_data=callback_data)])
     answer_options = InlineKeyboardMarkup(inline_keyboard=answer_keyboard)
     if riddle['image']:
         return await bot.send_photo(user_id, riddle['image'],
@@ -160,8 +165,8 @@ async def send_quest_step(user_id):
 
 @quest_router.callback_query(lambda query: query.data.startswith('answer'))
 async def check_inline_answer(callback_query: types.CallbackQuery):
-    option = callback_query.data.split('_')[1]
-    next_step = callback_query.data.split('_')[2]
+    # option = callback_query.data.split('_')[1]
+    next_step = callback_query.data.split('_')[1]
     user_id = callback_query.from_user.id
     quest = get_quest(user_id)
     if quest:

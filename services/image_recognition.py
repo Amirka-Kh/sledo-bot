@@ -1,7 +1,7 @@
-import numpy as np
-from sklearn.preprocessing import LabelEncoder
-from tensorflow.keras import layers, models
-from tensorflow.keras.preprocessing import image
+# import numpy as np
+# from sklearn.preprocessing import LabelEncoder
+# from tensorflow.keras import layers, models
+# from tensorflow.keras.preprocessing import image
 
 
 def prepare_model():
