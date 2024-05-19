@@ -27,7 +27,7 @@ async def process_buy_command(message: types.Message):
         description='Сезне тагын бик күп ачылмаган эшләр көтә. Бер тапкыр подписка алып, атна саен яңа квест алыгыз ️',
         provider_token=settings.payments_provider_token,
         currency='RUB',
-        photo_url='https://storage.yandexcloud.net/sledobot/teenagers.jpg',
+        photo_url='https://storage.yandexcloud.net/sledobot.ru/tatarby/toVill.png',
         photo_height=512,
         photo_width=512,
         photo_size=512,
